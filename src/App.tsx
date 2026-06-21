@@ -1,5 +1,6 @@
 import { useState } from "react";
 import "./styles.css";
+import TimelineEditor from "./TimelineEditor";
 
 const project = {
   sourceNo: 10,
@@ -360,6 +361,29 @@ function App() {
       duration: "",
       safetyDistance: "",
     });
+  };
+
+  const handleUpdateRecord = (updated: FiringRecord) => {
+    setRecords(
+      records.map((r) => (r.id === updated.id ? { ...r, ...updated } : r))
+    );
+  };
+
+  const handleSelectRecordForForm = (record: FiringRecord) => {
+    setFormData({
+      segmentId: record.segmentId,
+      model: record.model,
+      caliber: record.caliber,
+      angle: record.angle,
+      ignitionTime: record.ignitionTime,
+      duration: record.duration,
+      safetyDistance: record.safetyDistance,
+    });
+    if (record.segmentId !== selectedSegmentId) {
+      setSelectedSegmentId(record.segmentId);
+      const seg = segments.find((s) => s.id === record.segmentId);
+      setEditingSegment(seg || null);
+    }
   };
 
   const filteredModels = models.filter((m) => {
@@ -1327,6 +1351,35 @@ function App() {
             </div>
           </div>
         </div>
+      </section>
+
+      <section className="panel timeline-panel">
+        <div className="heading">
+          <div>
+            <p>可视化编排</p>
+            <h2>时间轴编排</h2>
+          </div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button
+              onClick={() => {
+                const firstSeg = segments[0];
+                if (firstSeg) handleSelectSegment(firstSeg.id);
+              }}
+              title="定位到首个段落"
+            >
+              定位段落
+            </button>
+          </div>
+        </div>
+
+        <TimelineEditor
+          segments={segments}
+          records={records}
+          selectedSegmentId={selectedSegmentId}
+          onSelectSegment={handleSelectSegment}
+          onUpdateRecord={handleUpdateRecord}
+          onSelectRecord={handleSelectRecordForForm}
+        />
       </section>
 
       <section className="workspace">
