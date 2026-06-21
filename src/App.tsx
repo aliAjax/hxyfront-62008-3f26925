@@ -536,14 +536,22 @@ function App() {
   const handleSvgMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
     if (!draggingPointId) return;
     const svg = e.currentTarget;
-    const rect = svg.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    const screenMatrix = svg.getScreenCTM();
+    if (!screenMatrix) return;
+    const svgPoint = svg.createSVGPoint();
+    svgPoint.x = e.clientX;
+    svgPoint.y = e.clientY;
+    const { x, y } = svgPoint.matrixTransform(screenMatrix.inverse());
+    const draggedPoint = firingPoints.find((p) => p.id === draggingPointId);
+    const updatedPoint = draggedPoint ? { ...draggedPoint, x, y } : null;
     setFiringPoints(
       firingPoints.map((p) =>
         p.id === draggingPointId ? { ...p, x, y } : p
       )
     );
+    if (updatedPoint && editingPoint?.id === draggingPointId) {
+      setEditingPoint(updatedPoint);
+    }
   };
 
   const handleSvgMouseUp = () => {
