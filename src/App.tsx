@@ -49,6 +49,27 @@ interface FireworkModel {
   applicablePositions: string;
 }
 
+interface Zone {
+  id: string;
+  name: "A区" | "B区" | "近景区" | "观众区";
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  color: string;
+}
+
+interface FiringPoint {
+  id: string;
+  name: string;
+  zoneId: string;
+  x: number;
+  y: number;
+  safetyDistance: number;
+  assignedModel: string;
+  notes: string;
+}
+
 const initialSegments: Segment[] = [
   {
     id: "seg-1",
@@ -196,6 +217,22 @@ const initialModels: FireworkModel[] = [
   },
 ];
 
+const initialZones: Zone[] = [
+  { id: "zone-a", name: "A区", x: 50, y: 80, width: 180, height: 120, color: "#dc2626" },
+  { id: "zone-b", name: "B区", x: 270, y: 80, width: 180, height: 120, color: "#1d4ed8" },
+  { id: "zone-near", name: "近景区", x: 120, y: 240, width: 260, height: 60, color: "#f59e0b" },
+  { id: "zone-audience", name: "观众区", x: 50, y: 340, width: 400, height: 100, color: "#059669" },
+];
+
+const initialFiringPoints: FiringPoint[] = [
+  { id: "fp-1", name: "A1", zoneId: "zone-a", x: 100, y: 120, safetyDistance: 80, assignedModel: "75mm礼花弹", notes: "主阵地左侧" },
+  { id: "fp-2", name: "A2", zoneId: "zone-a", x: 180, y: 140, safetyDistance: 120, assignedModel: "100mm礼花弹", notes: "主阵地中央" },
+  { id: "fp-3", name: "B1", zoneId: "zone-b", x: 320, y: 120, safetyDistance: 80, assignedModel: "75mm礼花弹", notes: "主阵地右侧" },
+  { id: "fp-4", name: "B2", zoneId: "zone-b", x: 400, y: 140, safetyDistance: 30, assignedModel: "50mm罗马烛光", notes: "侧翼罗马烛光" },
+  { id: "fp-5", name: "N1", zoneId: "zone-near", x: 180, y: 270, safetyDistance: 5, assignedModel: "冷焰火喷泉", notes: "近景舞台左侧" },
+  { id: "fp-6", name: "N2", zoneId: "zone-near", x: 320, y: 270, safetyDistance: 3, assignedModel: "冷焰火瀑布", notes: "近景舞台右侧" },
+];
+
 function App() {
   const [segments, setSegments] = useState<Segment[]>(initialSegments);
   const [selectedSegmentId, setSelectedSegmentId] = useState<string | null>(
@@ -228,6 +265,21 @@ function App() {
     applicablePositions: "",
   });
   const [modelFormErrors, setModelFormErrors] = useState<Record<string, string>>({});
+  const [zones] = useState<Zone[]>(initialZones);
+  const [firingPoints, setFiringPoints] = useState<FiringPoint[]>(initialFiringPoints);
+  const [selectedPointId, setSelectedPointId] = useState<string | null>(null);
+  const [draggingPointId, setDraggingPointId] = useState<string | null>(null);
+  const [showPointForm, setShowPointForm] = useState(false);
+  const [editingPoint, setEditingPoint] = useState<FiringPoint | null>(null);
+  const [newPoint, setNewPoint] = useState({
+    name: "",
+    zoneId: "zone-a",
+    x: 250,
+    y: 150,
+    safetyDistance: 30,
+    assignedModel: "",
+    notes: "",
+  });
 
   const selectedSegment = segments.find((s) => s.id === selectedSegmentId) || null;
 
@@ -425,7 +477,97 @@ function App() {
     }
   };
 
-  const metricCounts = [segments.length, records.length, 7, 32];
+  const getZoneById = (id: string) => zones.find((z) => z.id === id);
+  const selectedPoint = firingPoints.find((p) => p.id === selectedPointId) || null;
+
+  const handleAddPoint = () => {
+    if (!newPoint.name.trim()) {
+      alert("请填写点位名称");
+      return;
+    }
+    const point: FiringPoint = {
+      id: `fp-${Date.now()}`,
+      name: newPoint.name.trim(),
+      zoneId: newPoint.zoneId,
+      x: newPoint.x,
+      y: newPoint.y,
+      safetyDistance: newPoint.safetyDistance,
+      assignedModel: newPoint.assignedModel,
+      notes: newPoint.notes,
+    };
+    setFiringPoints([...firingPoints, point]);
+    setNewPoint({
+      name: "",
+      zoneId: "zone-a",
+      x: 250,
+      y: 150,
+      safetyDistance: 30,
+      assignedModel: "",
+      notes: "",
+    });
+    setShowPointForm(false);
+  };
+
+  const handleDeletePoint = (id: string) => {
+    setFiringPoints(firingPoints.filter((p) => p.id !== id));
+    if (selectedPointId === id) {
+      setSelectedPointId(null);
+      setEditingPoint(null);
+    }
+  };
+
+  const handleUpdatePoint = (updated: FiringPoint) => {
+    setFiringPoints(
+      firingPoints.map((p) => (p.id === updated.id ? updated : p))
+    );
+  };
+
+  const handleSelectPoint = (id: string | null) => {
+    setSelectedPointId(id);
+    const point = firingPoints.find((p) => p.id === id);
+    setEditingPoint(point || null);
+  };
+
+  const handlePointDragStart = (e: React.MouseEvent, pointId: string) => {
+    e.preventDefault();
+    setDraggingPointId(pointId);
+  };
+
+  const handleSvgMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
+    if (!draggingPointId) return;
+    const svg = e.currentTarget;
+    const rect = svg.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    setFiringPoints(
+      firingPoints.map((p) =>
+        p.id === draggingPointId ? { ...p, x, y } : p
+      )
+    );
+  };
+
+  const handleSvgMouseUp = () => {
+    if (draggingPointId) {
+      setDraggingPointId(null);
+    }
+  };
+
+  const handleSvgClick = (e: React.MouseEvent<SVGSVGElement>) => {
+    if ((e.target as Element).tagName === "svg" || (e.target as Element).classList.contains("zone-rect")) {
+      setSelectedPointId(null);
+      setEditingPoint(null);
+    }
+  };
+
+  const handleEditPointField = (field: keyof FiringPoint, value: string | number) => {
+    if (editingPoint) {
+      const updated = { ...editingPoint, [field]: value };
+      setEditingPoint(updated);
+      handleUpdatePoint(updated);
+    }
+  };
+
+  const metricCounts = [segments.length, records.length, 7, firingPoints.length];
 
   return (
     <main className="app">
@@ -806,6 +948,376 @@ function App() {
               <p>暂无匹配的型号数据</p>
             </div>
           )}
+        </div>
+      </section>
+
+      <section className="panel firing-plan-panel">
+        <div className="heading">
+          <div>
+            <p>场地布局</p>
+            <h2>燃放点位平面图</h2>
+          </div>
+          <button
+            className="primary"
+            onClick={() => {
+              if (showPointForm) {
+                setShowPointForm(false);
+              } else {
+                setShowPointForm(true);
+              }
+            }}
+          >
+            {showPointForm ? "取消" : "+ 新增点位"}
+          </button>
+        </div>
+
+        <div className="zone-legend">
+          {zones.map((zone) => (
+            <div key={zone.id} className="legend-item">
+              <span
+                className="legend-color"
+                style={{ background: zone.color }}
+              />
+              <span className="legend-text">{zone.name}</span>
+            </div>
+          ))}
+        </div>
+
+        {showPointForm && (
+          <div className="point-form">
+            <h3 style={{ marginBottom: 14, color: "#475569" }}>新增点位</h3>
+            <div className="field-grid">
+              <label>
+                <span>点位名称 *</span>
+                <input
+                  placeholder="例如：A3"
+                  value={newPoint.name}
+                  onChange={(e) => setNewPoint({ ...newPoint, name: e.target.value })}
+                />
+              </label>
+              <label>
+                <span>所属区域</span>
+                <select
+                  value={newPoint.zoneId}
+                  onChange={(e) => setNewPoint({ ...newPoint, zoneId: e.target.value })}
+                >
+                  {zones.map((z) => (
+                    <option key={z.id} value={z.id}>{z.name}</option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span>X 坐标</span>
+                <input
+                  type="number"
+                  value={newPoint.x}
+                  onChange={(e) => setNewPoint({ ...newPoint, x: Number(e.target.value) })}
+                />
+              </label>
+              <label>
+                <span>Y 坐标</span>
+                <input
+                  type="number"
+                  value={newPoint.y}
+                  onChange={(e) => setNewPoint({ ...newPoint, y: Number(e.target.value) })}
+                />
+              </label>
+              <label>
+                <span>安全距离 (m)</span>
+                <input
+                  type="number"
+                  value={newPoint.safetyDistance}
+                  onChange={(e) => setNewPoint({ ...newPoint, safetyDistance: Number(e.target.value) })}
+                />
+              </label>
+              <label>
+                <span>指定型号</span>
+                <select
+                  value={newPoint.assignedModel}
+                  onChange={(e) => setNewPoint({ ...newPoint, assignedModel: e.target.value })}
+                >
+                  <option value="">未指定</option>
+                  {models.map((m) => (
+                    <option key={m.id} value={m.name}>{m.name}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="field-full">
+                <span>备注</span>
+                <input
+                  placeholder="点位说明..."
+                  value={newPoint.notes}
+                  onChange={(e) => setNewPoint({ ...newPoint, notes: e.target.value })}
+                />
+              </label>
+            </div>
+            <div className="model-form-actions">
+              <button onClick={() => setShowPointForm(false)}>取消</button>
+              <button className="primary" onClick={handleAddPoint}>确认新增</button>
+            </div>
+          </div>
+        )}
+
+        <div className="plan-layout">
+          <div className="plan-canvas">
+            <svg
+              viewBox="0 0 500 480"
+              className="plan-svg"
+              onMouseMove={handleSvgMouseMove}
+              onMouseUp={handleSvgMouseUp}
+              onMouseLeave={handleSvgMouseUp}
+              onClick={handleSvgClick}
+            >
+              <defs>
+                <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
+                  <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#e2e8f0" strokeWidth="0.5"/>
+                </pattern>
+              </defs>
+              <rect width="100%" height="100%" fill="url(#grid)" />
+
+              {zones.map((zone) => (
+                <g key={zone.id}>
+                  <rect
+                    className="zone-rect"
+                    x={zone.x}
+                    y={zone.y}
+                    width={zone.width}
+                    height={zone.height}
+                    fill={zone.color}
+                    fillOpacity="0.12"
+                    stroke={zone.color}
+                    strokeWidth="2"
+                    strokeDasharray="6 3"
+                    rx="6"
+                  />
+                  <text
+                    x={zone.x + zone.width / 2}
+                    y={zone.y + 24}
+                    textAnchor="middle"
+                    fill={zone.color}
+                    fontSize="14"
+                    fontWeight="700"
+                    style={{ userSelect: "none" }}
+                  >
+                    {zone.name}
+                  </text>
+                </g>
+              ))}
+
+              {firingPoints.map((point) => {
+                const zone = getZoneById(point.zoneId);
+                const isSelected = selectedPointId === point.id;
+                const isDragging = draggingPointId === point.id;
+                const safetyRadius = point.safetyDistance * 0.8;
+
+                return (
+                  <g key={point.id}>
+                    <circle
+                      cx={point.x}
+                      cy={point.y}
+                      r={safetyRadius}
+                      fill={zone?.color || "#64748b"}
+                      fillOpacity="0.15"
+                      stroke={zone?.color || "#64748b"}
+                      strokeWidth="1"
+                      strokeDasharray="4 2"
+                      style={{ pointerEvents: "none" }}
+                    />
+                    <circle
+                      cx={point.x}
+                      cy={point.y}
+                      r={14}
+                      fill={zone?.color || "#64748b"}
+                      stroke={isSelected ? "#172033" : "#ffffff"}
+                      strokeWidth={isSelected ? 3 : 2}
+                      style={{
+                        cursor: "grab",
+                        filter: isDragging ? "drop-shadow(0 4px 8px rgba(0,0,0,0.3))" : "drop-shadow(0 2px 4px rgba(0,0,0,0.2))",
+                        transition: "filter 0.15s ease",
+                      }}
+                      onMouseDown={(e) => handlePointDragStart(e, point.id)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleSelectPoint(point.id);
+                      }}
+                    />
+                    <text
+                      x={point.x}
+                      y={point.y + 4}
+                      textAnchor="middle"
+                      fill="#ffffff"
+                      fontSize="11"
+                      fontWeight="700"
+                      style={{
+                        userSelect: "none",
+                        pointerEvents: "none",
+                      }}
+                    >
+                      {point.name}
+                    </text>
+                    <text
+                      x={point.x}
+                      y={point.y + 30}
+                      textAnchor="middle"
+                      fill="#64748b"
+                      fontSize="10"
+                      style={{
+                        userSelect: "none",
+                        pointerEvents: "none",
+                      }}
+                    >
+                      {point.safetyDistance}m
+                    </text>
+                  </g>
+                );
+              })}
+            </svg>
+          </div>
+
+          <div className="point-detail-panel">
+            <h3>点位详情</h3>
+            {selectedPoint && editingPoint ? (
+              <div className="point-detail">
+                <div
+                  className="point-detail-header"
+                  style={{
+                    borderLeftColor: getZoneById(selectedPoint.zoneId)?.color,
+                  }}
+                >
+                  <div>
+                    <h4>点位 {selectedPoint.name}</h4>
+                    <p style={{ margin: 0, color: "#64748b", fontSize: 13 }}>
+                      {getZoneById(selectedPoint.zoneId)?.name}
+                    </p>
+                  </div>
+                  <button
+                    className="delete-btn"
+                    onClick={() => handleDeletePoint(selectedPoint.id)}
+                    title="删除点位"
+                    style={{ width: 28, height: 28, fontSize: 20 }}
+                  >
+                    ×
+                  </button>
+                </div>
+
+                <div className="point-coords">
+                  <div className="coord-item">
+                    <small>X 坐标</small>
+                    <strong>{Math.round(selectedPoint.x)}</strong>
+                  </div>
+                  <div className="coord-item">
+                    <small>Y 坐标</small>
+                    <strong>{Math.round(selectedPoint.y)}</strong>
+                  </div>
+                  <div className="coord-item">
+                    <small>安全距离</small>
+                    <strong>{selectedPoint.safetyDistance}m</strong>
+                  </div>
+                </div>
+
+                <div className="point-form-fields">
+                  <label>
+                    <span>点位名称</span>
+                    <input
+                      value={editingPoint.name}
+                      onChange={(e) => handleEditPointField("name", e.target.value)}
+                    />
+                  </label>
+                  <label>
+                    <span>所属区域</span>
+                    <select
+                      value={editingPoint.zoneId}
+                      onChange={(e) => handleEditPointField("zoneId", e.target.value)}
+                    >
+                      {zones.map((z) => (
+                        <option key={z.id} value={z.id}>{z.name}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    <span>X 坐标</span>
+                    <input
+                      type="number"
+                      value={editingPoint.x}
+                      onChange={(e) => handleEditPointField("x", Number(e.target.value))}
+                    />
+                  </label>
+                  <label>
+                    <span>Y 坐标</span>
+                    <input
+                      type="number"
+                      value={editingPoint.y}
+                      onChange={(e) => handleEditPointField("y", Number(e.target.value))}
+                    />
+                  </label>
+                  <label>
+                    <span>安全距离 (m)</span>
+                    <input
+                      type="number"
+                      value={editingPoint.safetyDistance}
+                      onChange={(e) => handleEditPointField("safetyDistance", Number(e.target.value))}
+                    />
+                  </label>
+                  <label>
+                    <span>指定型号</span>
+                    <select
+                      value={editingPoint.assignedModel}
+                      onChange={(e) => handleEditPointField("assignedModel", e.target.value)}
+                    >
+                      <option value="">未指定</option>
+                      {models.map((m) => (
+                        <option key={m.id} value={m.name}>{m.name}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="field-full">
+                    <span>备注</span>
+                    <textarea
+                      value={editingPoint.notes}
+                      onChange={(e) => handleEditPointField("notes", e.target.value)}
+                      rows={2}
+                      placeholder="点位说明..."
+                    />
+                  </label>
+                </div>
+
+                <div className="point-info">
+                  <small style={{ color: "#64748b" }}>提示：可直接拖拽点位调整坐标</small>
+                </div>
+              </div>
+            ) : (
+              <div className="empty-state">
+                <p>点击平面图上的点位查看详情</p>
+              </div>
+            )}
+
+            <div className="point-list-mini">
+              <h4>点位列表</h4>
+              <div className="point-list-items">
+                {firingPoints.map((point) => (
+                  <div
+                    key={point.id}
+                    className={`point-list-item ${
+                      selectedPointId === point.id ? "active" : ""
+                    }`}
+                    onClick={() => handleSelectPoint(point.id)}
+                  >
+                    <span
+                      className="point-dot"
+                      style={{ background: getZoneById(point.zoneId)?.color }}
+                    />
+                    <span className="point-list-name">{point.name}</span>
+                    <span className="point-list-zone">
+                      {getZoneById(point.zoneId)?.name}
+                    </span>
+                    <span className="point-list-dist">
+                      {point.safetyDistance}m
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
