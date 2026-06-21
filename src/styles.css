@@ -484,3 +484,190 @@ input {
     grid-template-columns: 1fr;
   }
 }
+
+.model-catalog {
+  margin-bottom: 18px;
+}
+
+.model-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.model-search {
+  width: 100%;
+  min-height: 42px;
+  border-radius: 7px;
+  border: 1px solid var(--border);
+  padding: 0 12px;
+  font: inherit;
+}
+
+.model-chips {
+  gap: 8px;
+}
+
+.model-chips button {
+  padding: 0 12px;
+  font-size: 13px;
+  min-height: 32px;
+  border-color: var(--border);
+  background: #ffffff;
+  transition: all 0.15s ease;
+}
+
+.model-chips button.active {
+  background: var(--primary);
+  color: #ffffff;
+  border-color: var(--primary);
+}
+
+.model-form {
+  margin-bottom: 18px;
+  padding: 18px;
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.model-form select {
+  width: 100%;
+  min-height: 42px;
+  border-radius: 7px;
+  border: 1px solid var(--border);
+  padding: 0 12px;
+  background: #ffffff;
+  font: inherit;
+  cursor: pointer;
+}
+
+.field-error {
+  color: var(--secondary);
+  font-size: 12px;
+  margin-top: 2px;
+}
+
+.model-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 14px;
+  gap: 10px;
+}
+
+.model-list {
+  display: grid;
+  gap: 10px;
+}
+
+.model-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fbfdff;
+  gap: 12px;
+}
+
+.model-item:hover {
+  border-color: color-mix(in srgb, var(--primary) 40%, var(--border));
+  background: #f5f9ff;
+}
+
+.model-item-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.model-item-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.model-item-header h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: #172033;
+}
+
+.model-category-tag {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 4px;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+
+.tag-礼花弹 {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.tag-罗马烛光 {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.tag-扇形架 {
+  background: #fef3c7;
+  color: #d97706;
+}
+
+.tag-冷焰火 {
+  background: #d1fae5;
+  color: #059669;
+}
+
+.model-item p {
+  margin: 0;
+  color: #526071;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.model-item-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.edit-btn {
+  min-height: 28px;
+  padding: 0 10px;
+  font-size: 12px;
+  border-color: color-mix(in srgb, var(--primary) 30%, var(--border));
+  background: color-mix(in srgb, var(--primary) 10%, #ffffff);
+  color: var(--primary);
+  border-radius: 6px;
+  font-weight: 500;
+  transition: all 0.15s ease;
+}
+
+.edit-btn:hover {
+  background: var(--primary);
+  color: #ffffff;
+  border-color: var(--primary);
+}
+
+@media (max-width: 860px) {
+  .model-toolbar {
+    flex-direction: column;
+  }
+
+  .model-item {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .model-item .delete-btn {
+    align-self: flex-end;
+  }
+}

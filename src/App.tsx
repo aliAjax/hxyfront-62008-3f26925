@@ -12,7 +12,7 @@ const project = {
   palette: ["#1d4ed8", "#dc2626", "#f59e0b"],
   metrics: ["节目段落", "点火节点", "冲突提示", "安全距离"],
   filters: ["礼花弹", "罗马烛光", "扇形架", "冷焰火"],
-  fields: ["烟花型号", "口径", "发射角度", "点火时间", "安全距离"],
+  fields: ["烟花型号", "口径", "发射角度", "点火时间", "持续时间", "安全距离"],
 };
 
 interface Segment {
@@ -32,8 +32,21 @@ interface FiringRecord {
   caliber: string;
   angle: string;
   ignitionTime: string;
+  duration: string;
   safetyDistance: string;
   remark: string;
+}
+
+type FireworkCategory = "礼花弹" | "罗马烛光" | "扇形架" | "冷焰火";
+
+interface FireworkModel {
+  id: string;
+  name: string;
+  category: FireworkCategory;
+  caliber: string;
+  defaultDuration: string;
+  defaultSafetyDistance: string;
+  applicablePositions: string;
 }
 
 const initialSegments: Segment[] = [
@@ -74,6 +87,7 @@ const initialRecords: FiringRecord[] = [
     caliber: "30mm",
     angle: "45°",
     ignitionTime: "00:12.500",
+    duration: "2.5s",
     safetyDistance: "35m",
     remark: "安全距离35m",
   },
@@ -84,6 +98,7 @@ const initialRecords: FiringRecord[] = [
     caliber: "75mm",
     angle: "90°",
     ignitionTime: "01:08.200",
+    duration: "3.0s",
     safetyDistance: "80m",
     remark: "与B点位间隔正常",
   },
@@ -94,6 +109,7 @@ const initialRecords: FiringRecord[] = [
     caliber: "-",
     angle: "60°",
     ignitionTime: "03:42.000",
+    duration: "10.0s",
     safetyDistance: "5m",
     remark: "近景区待确认",
   },
@@ -116,6 +132,70 @@ const defaultColors = [
   "#db2777",
 ];
 
+const fireworkCategories: FireworkCategory[] = [
+  "礼花弹",
+  "罗马烛光",
+  "扇形架",
+  "冷焰火",
+];
+
+const initialModels: FireworkModel[] = [
+  {
+    id: "mdl-1",
+    name: "75mm礼花弹",
+    category: "礼花弹",
+    caliber: "75mm",
+    defaultDuration: "3.0s",
+    defaultSafetyDistance: "80m",
+    applicablePositions: "A、B、C主阵地",
+  },
+  {
+    id: "mdl-2",
+    name: "100mm礼花弹",
+    category: "礼花弹",
+    caliber: "100mm",
+    defaultDuration: "4.0s",
+    defaultSafetyDistance: "120m",
+    applicablePositions: "A、B主阵地",
+  },
+  {
+    id: "mdl-3",
+    name: "30mm扇形架",
+    category: "扇形架",
+    caliber: "30mm",
+    defaultDuration: "2.5s",
+    defaultSafetyDistance: "35m",
+    applicablePositions: "D、E侧翼",
+  },
+  {
+    id: "mdl-4",
+    name: "50mm罗马烛光",
+    category: "罗马烛光",
+    caliber: "50mm",
+    defaultDuration: "8.0s",
+    defaultSafetyDistance: "30m",
+    applicablePositions: "A、B、C、D全点位",
+  },
+  {
+    id: "mdl-5",
+    name: "冷焰火喷泉",
+    category: "冷焰火",
+    caliber: "-",
+    defaultDuration: "10.0s",
+    defaultSafetyDistance: "5m",
+    applicablePositions: "舞台近景区",
+  },
+  {
+    id: "mdl-6",
+    name: "冷焰火瀑布",
+    category: "冷焰火",
+    caliber: "-",
+    defaultDuration: "15.0s",
+    defaultSafetyDistance: "3m",
+    applicablePositions: "舞台顶部",
+  },
+];
+
 function App() {
   const [segments, setSegments] = useState<Segment[]>(initialSegments);
   const [selectedSegmentId, setSelectedSegmentId] = useState<string | null>(
@@ -128,11 +208,26 @@ function App() {
     caliber: "",
     angle: "",
     ignitionTime: "",
+    duration: "",
     safetyDistance: "",
   });
   const [editingSegment, setEditingSegment] = useState<Segment | null>(
     initialSegments[0] ?? null
   );
+  const [models, setModels] = useState<FireworkModel[]>(initialModels);
+  const [modelSearch, setModelSearch] = useState("");
+  const [modelCategoryFilter, setModelCategoryFilter] = useState<FireworkCategory | "">("");
+  const [showModelForm, setShowModelForm] = useState(false);
+  const [editingModelId, setEditingModelId] = useState<string | null>(null);
+  const [newModel, setNewModel] = useState({
+    name: "",
+    category: "礼花弹" as FireworkCategory,
+    caliber: "",
+    defaultDuration: "",
+    defaultSafetyDistance: "",
+    applicablePositions: "",
+  });
+  const [modelFormErrors, setModelFormErrors] = useState<Record<string, string>>({});
 
   const selectedSegment = segments.find((s) => s.id === selectedSegmentId) || null;
 
@@ -199,6 +294,7 @@ function App() {
       caliber: formData.caliber,
       angle: formData.angle,
       ignitionTime: formData.ignitionTime,
+      duration: formData.duration,
       safetyDistance: formData.safetyDistance,
       remark: "",
     };
@@ -209,8 +305,124 @@ function App() {
       caliber: "",
       angle: "",
       ignitionTime: "",
+      duration: "",
       safetyDistance: "",
     });
+  };
+
+  const filteredModels = models.filter((m) => {
+    const matchSearch = m.name.toLowerCase().includes(modelSearch.toLowerCase()) ||
+      m.applicablePositions.toLowerCase().includes(modelSearch.toLowerCase());
+    const matchCategory = !modelCategoryFilter || m.category === modelCategoryFilter;
+    return matchSearch && matchCategory;
+  });
+
+  const validateModelForm = () => {
+    const errors: Record<string, string> = {};
+    if (!newModel.name.trim()) errors.name = "型号名称不能为空";
+    if (!newModel.caliber.trim()) errors.caliber = "口径不能为空";
+    if (!newModel.defaultDuration.trim()) errors.defaultDuration = "默认持续时间不能为空";
+    if (!newModel.defaultSafetyDistance.trim()) errors.defaultSafetyDistance = "默认安全距离不能为空";
+    if (!newModel.applicablePositions.trim()) errors.applicablePositions = "适用点位不能为空";
+    if (
+      models.some(
+        (m) => m.name === newModel.name.trim() && m.id !== editingModelId
+      )
+    )
+      errors.name = "该型号名称已存在";
+    setModelFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const handleAddModel = () => {
+    if (!validateModelForm()) return;
+    if (editingModelId) {
+      setModels(
+        models.map((m) =>
+          m.id === editingModelId
+            ? {
+                ...m,
+                name: newModel.name.trim(),
+                category: newModel.category,
+                caliber: newModel.caliber.trim(),
+                defaultDuration: newModel.defaultDuration.trim(),
+                defaultSafetyDistance: newModel.defaultSafetyDistance.trim(),
+                applicablePositions: newModel.applicablePositions.trim(),
+              }
+            : m
+        )
+      );
+      setEditingModelId(null);
+    } else {
+      const model: FireworkModel = {
+        id: `mdl-${Date.now()}`,
+        name: newModel.name.trim(),
+        category: newModel.category,
+        caliber: newModel.caliber.trim(),
+        defaultDuration: newModel.defaultDuration.trim(),
+        defaultSafetyDistance: newModel.defaultSafetyDistance.trim(),
+        applicablePositions: newModel.applicablePositions.trim(),
+      };
+      setModels([...models, model]);
+    }
+    setNewModel({
+      name: "",
+      category: "礼花弹",
+      caliber: "",
+      defaultDuration: "",
+      defaultSafetyDistance: "",
+      applicablePositions: "",
+    });
+    setModelFormErrors({});
+    setShowModelForm(false);
+  };
+
+  const handleEditModel = (id: string) => {
+    const model = models.find((m) => m.id === id);
+    if (model) {
+      setNewModel({
+        name: model.name,
+        category: model.category,
+        caliber: model.caliber,
+        defaultDuration: model.defaultDuration,
+        defaultSafetyDistance: model.defaultSafetyDistance,
+        applicablePositions: model.applicablePositions,
+      });
+      setEditingModelId(id);
+      setShowModelForm(true);
+      setModelFormErrors({});
+    }
+  };
+
+  const handleCancelModelForm = () => {
+    setShowModelForm(false);
+    setEditingModelId(null);
+    setNewModel({
+      name: "",
+      category: "礼花弹",
+      caliber: "",
+      defaultDuration: "",
+      defaultSafetyDistance: "",
+      applicablePositions: "",
+    });
+    setModelFormErrors({});
+  };
+
+  const handleDeleteModel = (id: string) => {
+    setModels(models.filter((m) => m.id !== id));
+  };
+
+  const handleSelectModelForRecord = (modelId: string) => {
+    const selected = models.find((m) => m.id === modelId);
+    if (selected) {
+      setFormData({
+        ...formData,
+        model: selected.name,
+        caliber: selected.caliber,
+        duration: selected.defaultDuration,
+        safetyDistance: selected.defaultSafetyDistance,
+      });
+    }
   };
 
   const metricCounts = [segments.length, records.length, 7, 32];
@@ -421,6 +633,182 @@ function App() {
         </div>
       </section>
 
+      <section className="panel model-catalog">
+        <div className="heading">
+          <div>
+            <p>基础数据</p>
+            <h2>烟花型号清单</h2>
+          </div>
+          <button
+            className="primary"
+            onClick={() => {
+              if (showModelForm) {
+                handleCancelModelForm();
+              } else {
+                setEditingModelId(null);
+                setShowModelForm(true);
+              }
+            }}
+          >
+            {showModelForm ? "取消" : "+ 新增型号"}
+          </button>
+        </div>
+
+        <div className="model-toolbar">
+          <input
+            className="model-search"
+            placeholder="搜索型号名称或适用点位..."
+            value={modelSearch}
+            onChange={(e) => setModelSearch(e.target.value)}
+          />
+          <div className="chips model-chips">
+            <button
+              className={modelCategoryFilter === "" ? "active" : ""}
+              onClick={() => setModelCategoryFilter("")}
+            >
+              全部
+            </button>
+            {fireworkCategories.map((cat) => (
+              <button
+                key={cat}
+                className={modelCategoryFilter === cat ? "active" : ""}
+                onClick={() => setModelCategoryFilter(cat)}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {showModelForm && (
+          <div className="model-form">
+            <h3 style={{ marginBottom: 14, color: "#475569" }}>
+              {editingModelId ? "编辑型号" : "新增型号"}
+            </h3>
+            <div className="field-grid">
+              <label>
+                <span>型号名称 *</span>
+                <input
+                  placeholder="例如：75mm礼花弹"
+                  value={newModel.name}
+                  onChange={(e) => setNewModel({ ...newModel, name: e.target.value })}
+                />
+                {modelFormErrors.name && (
+                  <span className="field-error">{modelFormErrors.name}</span>
+                )}
+              </label>
+              <label>
+                <span>分类 *</span>
+                <select
+                  value={newModel.category}
+                  onChange={(e) =>
+                    setNewModel({ ...newModel, category: e.target.value as FireworkCategory })
+                  }
+                >
+                  {fireworkCategories.map((cat) => (
+                    <option key={cat} value={cat}>{cat}</option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span>口径 *</span>
+                <input
+                  placeholder="例如：75mm"
+                  value={newModel.caliber}
+                  onChange={(e) => setNewModel({ ...newModel, caliber: e.target.value })}
+                />
+                {modelFormErrors.caliber && (
+                  <span className="field-error">{modelFormErrors.caliber}</span>
+                )}
+              </label>
+              <label>
+                <span>默认持续时间 *</span>
+                <input
+                  placeholder="例如：3.0s"
+                  value={newModel.defaultDuration}
+                  onChange={(e) => setNewModel({ ...newModel, defaultDuration: e.target.value })}
+                />
+                {modelFormErrors.defaultDuration && (
+                  <span className="field-error">{modelFormErrors.defaultDuration}</span>
+                )}
+              </label>
+              <label>
+                <span>默认安全距离 *</span>
+                <input
+                  placeholder="例如：80m"
+                  value={newModel.defaultSafetyDistance}
+                  onChange={(e) =>
+                    setNewModel({ ...newModel, defaultSafetyDistance: e.target.value })
+                  }
+                />
+                {modelFormErrors.defaultSafetyDistance && (
+                  <span className="field-error">{modelFormErrors.defaultSafetyDistance}</span>
+                )}
+              </label>
+              <label>
+                <span>适用点位 *</span>
+                <input
+                  placeholder="例如：A、B主阵地"
+                  value={newModel.applicablePositions}
+                  onChange={(e) =>
+                    setNewModel({ ...newModel, applicablePositions: e.target.value })
+                  }
+                />
+                {modelFormErrors.applicablePositions && (
+                  <span className="field-error">{modelFormErrors.applicablePositions}</span>
+                )}
+              </label>
+            </div>
+            <div className="model-form-actions">
+              <button onClick={handleCancelModelForm}>取消</button>
+              <button className="primary" onClick={handleAddModel}>
+                {editingModelId ? "保存修改" : "确认新增"}
+              </button>
+            </div>
+          </div>
+        )}
+
+        <div className="model-list">
+          {filteredModels.length > 0 ? (
+            filteredModels.map((m) => (
+              <article key={m.id} className="model-item">
+                <div className="model-item-main">
+                  <div className="model-item-header">
+                    <h3>{m.name}</h3>
+                    <span className={`model-category-tag tag-${m.category}`}>
+                      {m.category}
+                    </span>
+                  </div>
+                  <p>
+                    口径 {m.caliber} · 持续 {m.defaultDuration} · 安全距离 {m.defaultSafetyDistance} · 点位 {m.applicablePositions}
+                  </p>
+                </div>
+                <div className="model-item-actions">
+                  <button
+                    className="edit-btn"
+                    onClick={() => handleEditModel(m.id)}
+                    title="编辑型号"
+                  >
+                    编辑
+                  </button>
+                  <button
+                    className="delete-btn"
+                    onClick={() => handleDeleteModel(m.id)}
+                    title="删除型号"
+                  >
+                    ×
+                  </button>
+                </div>
+              </article>
+            ))
+          ) : (
+            <div className="empty-state">
+              <p>暂无匹配的型号数据</p>
+            </div>
+          )}
+        </div>
+      </section>
+
       <section className="workspace">
         <aside className="panel">
           <h2>{project.domain}筛选</h2>
@@ -456,12 +844,29 @@ function App() {
                 ))}
               </select>
             </label>
+            <label className="field-full">
+              <span>选择型号（从型号清单）</span>
+              <select
+                value=""
+                onChange={(e) => {
+                  if (e.target.value) handleSelectModelForRecord(e.target.value);
+                }}
+              >
+                <option value="">点击选择型号自动回填</option>
+                {models.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    [{m.category}] {m.name} — 口径{m.caliber} 安全{m.defaultSafetyDistance}
+                  </option>
+                ))}
+              </select>
+            </label>
             {project.fields.map((field: string) => {
               const fieldMap: Record<string, string> = {
                 烟花型号: "model",
                 口径: "caliber",
                 发射角度: "angle",
                 点火时间: "ignitionTime",
+                持续时间: "duration",
                 安全距离: "safetyDistance",
               };
               const key = fieldMap[field] || field;
@@ -518,6 +923,7 @@ function App() {
                       record.caliber,
                       record.angle,
                       record.ignitionTime,
+                      record.duration ? `持续${record.duration}` : null,
                       record.safetyDistance,
                     ]
                       .filter(Boolean)
