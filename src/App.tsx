@@ -145,6 +145,34 @@ const segmentTypes: Segment["type"][] = [
   "Other",
 ];
 
+const timeToMs = (time: string): number => {
+  if (!time) return 0;
+  const clean = time.trim();
+  const match = clean.match(/^(?:(\d+):)?(\d+(?:\.\d+)?)(?:\.(\d+))?$/);
+  if (match) {
+    const minutes = match[1] ? parseInt(match[1], 10) : 0;
+    const seconds = parseFloat(match[2]);
+    const msStr = match[3] || "0";
+    return Math.round(minutes * 60000 + seconds * 1000 + parseInt(msStr.padEnd(3, "0").slice(0, 3), 10));
+  }
+  const simpleMatch = clean.match(/^(\d+(?:\.\d+)?)s?$/);
+  if (simpleMatch) {
+    return Math.round(parseFloat(simpleMatch[1]) * 1000);
+  }
+  return 0;
+};
+
+const sortRecordsByTime = (recs: FiringRecord[], segs: Segment[]): FiringRecord[] => {
+  return [...recs].sort((a, b) => {
+    const segA = segs.find((s) => s.id === a.segmentId);
+    const segB = segs.find((s) => s.id === b.segmentId);
+    const segStartA = segA ? timeToMs(segA.startTime) : 0;
+    const segStartB = segB ? timeToMs(segB.startTime) : 0;
+    if (segStartA !== segStartB) return segStartA - segStartB;
+    return timeToMs(a.ignitionTime) - timeToMs(b.ignitionTime);
+  });
+};
+
 const defaultColors = [
   "#1d4ed8",
   "#dc2626",
@@ -351,7 +379,7 @@ function App() {
       safetyDistance: formData.safetyDistance,
       remark: "",
     };
-    setRecords([...records, newRecord]);
+    setRecords(sortRecordsByTime([...records, newRecord], segments));
     setFormData({
       segmentId: formData.segmentId,
       model: "",
@@ -364,9 +392,8 @@ function App() {
   };
 
   const handleUpdateRecord = (updated: FiringRecord) => {
-    setRecords(
-      records.map((r) => (r.id === updated.id ? { ...r, ...updated } : r))
-    );
+    const newRecords = records.map((r) => (r.id === updated.id ? { ...r, ...updated } : r));
+    setRecords(sortRecordsByTime(newRecords, segments));
   };
 
   const handleSelectRecordForForm = (record: FiringRecord) => {
