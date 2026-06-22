@@ -23,7 +23,7 @@ interface MusicSyncProps {
   onUndoSnap: (entry: SnapHistoryEntry) => void;
   onClearSnapHistory: () => void;
   segments: { id: string; name: string; startTime: string; endTime: string; themeColor: string }[];
-  records: { id: string; ignitionTime: string }[];
+  records: { id: string; ignitionTime: string; duration?: string; model?: string }[];
 }
 
 const timeToMs = (time: string): number => {
@@ -98,7 +98,7 @@ const MusicSync: React.FC<MusicSyncProps> = ({
 
   const outOfBoundsWarnings = useMemo(() => {
     if (durationMs <= 0) return [];
-    const warnings: { id: string; name: string; time: string; type: "marker" | "segment" | "record" }[] = [];
+    const warnings: { id: string; name: string; time: string; endTime?: string; type: "marker" | "segment" | "record" }[] = [];
     markers.forEach((m) => {
       if (timeToMs(m.time) > durationMs) {
         warnings.push({ id: m.id, name: m.label, time: m.time, type: "marker" });
@@ -110,8 +110,17 @@ const MusicSync: React.FC<MusicSyncProps> = ({
       }
     });
     records.forEach((r) => {
-      if (timeToMs(r.ignitionTime) > durationMs) {
-        warnings.push({ id: r.id, name: r.id, time: r.ignitionTime, type: "record" });
+      const ignMs = timeToMs(r.ignitionTime);
+      const durMs = r.duration ? timeToMs(r.duration) : 0;
+      const endMs = ignMs + durMs;
+      if (endMs > durationMs) {
+        warnings.push({
+          id: r.id,
+          name: r.model || r.id,
+          time: r.ignitionTime,
+          endTime: msToTime(endMs),
+          type: "record",
+        });
       }
     });
     return warnings;
@@ -286,18 +295,25 @@ const MusicSync: React.FC<MusicSyncProps> = ({
             音乐总时长缩短后，以下项目超出范围：
           </p>
           <div className="warning-list">
-            {outOfBoundsWarnings.map((w) => (
-              <div key={w.id} className="warning-item">
-                <span className={`warning-type tag-${w.type}`}>
-                  {w.type === "marker" ? "标记" : w.type === "segment" ? "段落" : "点火"}
-                </span>
-                <span className="warning-name">{w.name}</span>
-                <span className="warning-time">{w.time}</span>
-                <span className="warning-exceed">
-                  超出 {timeToMs(w.time) - durationMs}ms
-                </span>
-              </div>
-            ))}
+            {outOfBoundsWarnings.map((w) => {
+              const exceedMs = w.endTime
+                ? timeToMs(w.endTime) - durationMs
+                : timeToMs(w.time) - durationMs;
+              return (
+                <div key={w.id} className="warning-item">
+                  <span className={`warning-type tag-${w.type}`}>
+                    {w.type === "marker" ? "标记" : w.type === "segment" ? "段落" : "点火"}
+                  </span>
+                  <span className="warning-name">{w.name}</span>
+                  <span className="warning-time">
+                    {w.endTime ? `${w.time} → ${w.endTime}` : w.time}
+                  </span>
+                  <span className="warning-exceed">
+                    超出 {exceedMs}ms
+                  </span>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}

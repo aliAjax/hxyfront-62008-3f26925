@@ -1566,6 +1566,8 @@ function App() {
             records={records.map((r) => ({
               id: r.id,
               ignitionTime: r.ignitionTime,
+              duration: r.duration,
+              model: r.model,
             }))}
           />
         )}
