@@ -1,6 +1,11 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import "./styles.css";
 import TimelineEditor from "./TimelineEditor";
+import ConflictCenter from "./ConflictCenter";
+import {
+  detectConflicts,
+  Conflict as ConflictType,
+} from "./conflictDetection";
 
 const project = {
   sourceNo: 10,
@@ -36,6 +41,7 @@ interface FiringRecord {
   duration: string;
   safetyDistance: string;
   remark: string;
+  firingPointId?: string;
 }
 
 type FireworkCategory = "礼花弹" | "罗马烛光" | "扇形架" | "冷焰火";
@@ -112,6 +118,7 @@ const initialRecords: FiringRecord[] = [
     duration: "2.5s",
     safetyDistance: "35m",
     remark: "安全距离35m",
+    firingPointId: "fp-1",
   },
   {
     id: "rec-2",
@@ -122,18 +129,92 @@ const initialRecords: FiringRecord[] = [
     ignitionTime: "01:08.200",
     duration: "3.0s",
     safetyDistance: "80m",
-    remark: "与B点位间隔正常",
+    remark: "时间重叠测试",
+    firingPointId: "fp-2",
   },
   {
     id: "rec-3",
+    segmentId: "seg-2",
+    model: "100mm礼花弹",
+    caliber: "100mm",
+    angle: "90°",
+    ignitionTime: "01:09.000",
+    duration: "4.0s",
+    safetyDistance: "120m",
+    remark: "与上一条时间重叠",
+    firingPointId: "fp-3",
+  },
+  {
+    id: "rec-4",
+    segmentId: "seg-2",
+    model: "75mm礼花弹",
+    caliber: "75mm",
+    angle: "75°",
+    ignitionTime: "01:15.000",
+    duration: "3.0s",
+    safetyDistance: "80m",
+    remark: "同点位连续发射间隔过短",
+    firingPointId: "fp-1",
+  },
+  {
+    id: "rec-5",
+    segmentId: "seg-2",
+    model: "100mm礼花弹",
+    caliber: "100mm",
+    angle: "80°",
+    ignitionTime: "01:15.500",
+    duration: "4.0s",
+    safetyDistance: "120m",
+    remark: "与rec-4间隔过短",
+    firingPointId: "fp-1",
+  },
+  {
+    id: "rec-6",
+    segmentId: "seg-2",
+    model: "75mm礼花弹",
+    caliber: "75mm",
+    angle: "85°",
+    ignitionTime: "01:22.000",
+    duration: "3.0s",
+    safetyDistance: "80m",
+    remark: "安全距离不足（A2 vs B1）",
+    firingPointId: "fp-2",
+  },
+  {
+    id: "rec-7",
+    segmentId: "seg-2",
+    model: "75mm礼花弹",
+    caliber: "75mm",
+    angle: "85°",
+    ignitionTime: "01:22.500",
+    duration: "3.0s",
+    safetyDistance: "80m",
+    remark: "与rec-6距离过近",
+    firingPointId: "fp-3",
+  },
+  {
+    id: "rec-8",
     segmentId: "seg-3",
-    model: "冷焰火",
+    model: "冷焰火喷泉",
     caliber: "-",
     angle: "60°",
     ignitionTime: "03:42.000",
     duration: "10.0s",
     safetyDistance: "5m",
     remark: "近景区待确认",
+    firingPointId: "fp-5",
+  },
+  {
+    id: "rec-9",
+    segmentId: "seg-3",
+    model: "冷焰火瀑布",
+    caliber: "-",
+    angle: "45°",
+    ignitionTime: "03:42.300",
+    duration: "15.0s",
+    safetyDistance: "3m",
+    remark: "冷焰火时间重叠",
+    firingPointId: "fp-6",
   },
 ];
 
@@ -276,6 +357,7 @@ function App() {
     ignitionTime: "",
     duration: "",
     safetyDistance: "",
+    firingPointId: "",
   });
   const [editingSegment, setEditingSegment] = useState<Segment | null>(
     initialSegments[0] ?? null
@@ -309,6 +391,27 @@ function App() {
     assignedModel: "",
     notes: "",
   });
+
+  const [selectedConflictId, setSelectedConflictId] = useState<string | null>(null);
+  const [highlightedRecordIds, setHighlightedRecordIds] = useState<string[]>([]);
+  const [highlightedPointIds, setHighlightedPointIds] = useState<string[]>([]);
+
+  const conflicts = useMemo(
+    () => detectConflicts(records, segments, firingPoints),
+    [records, segments, firingPoints]
+  );
+
+  const conflictRecordIds = useMemo(() => {
+    const ids = new Set<string>();
+    conflicts.forEach((c) => c.involvedRecordIds.forEach((id) => ids.add(id)));
+    return Array.from(ids);
+  }, [conflicts]);
+
+  const conflictPointIds = useMemo(() => {
+    const ids = new Set<string>();
+    conflicts.forEach((c) => c.involvedPointIds.forEach((id) => ids.add(id)));
+    return Array.from(ids);
+  }, [conflicts]);
 
   const selectedSegment = segments.find((s) => s.id === selectedSegmentId) || null;
 
@@ -378,6 +481,7 @@ function App() {
       duration: formData.duration,
       safetyDistance: formData.safetyDistance,
       remark: "",
+      firingPointId: formData.firingPointId || undefined,
     };
     setRecords(sortRecordsByTime([...records, newRecord], segments));
     setFormData({
@@ -388,6 +492,7 @@ function App() {
       ignitionTime: "",
       duration: "",
       safetyDistance: "",
+      firingPointId: "",
     });
   };
 
@@ -405,11 +510,19 @@ function App() {
       ignitionTime: record.ignitionTime,
       duration: record.duration,
       safetyDistance: record.safetyDistance,
+      firingPointId: record.firingPointId || "",
     });
     if (record.segmentId !== selectedSegmentId) {
       setSelectedSegmentId(record.segmentId);
       const seg = segments.find((s) => s.id === record.segmentId);
       setEditingSegment(seg || null);
+    }
+  };
+
+  const handleLocateRecord = (recordId: string) => {
+    const record = records.find((r) => r.id === recordId);
+    if (record) {
+      handleSelectRecordForForm(record);
     }
   };
 
@@ -626,7 +739,7 @@ function App() {
     }
   };
 
-  const metricCounts = [segments.length, records.length, 7, firingPoints.length];
+  const metricCounts = [segments.length, records.length, conflicts.length, firingPoints.length];
 
   return (
     <main className="app">
@@ -1167,18 +1280,22 @@ function App() {
                 const zone = getZoneById(point.zoneId);
                 const isSelected = selectedPointId === point.id;
                 const isDragging = draggingPointId === point.id;
+                const isHighlighted = highlightedPointIds.includes(point.id);
+                const hasConflict = conflictPointIds.includes(point.id);
                 const safetyRadius = point.safetyDistance * 0.8;
 
+                const pointFill = hasConflict ? "#dc2626" : zone?.color || "#64748b";
+
                 return (
-                  <g key={point.id}>
+                  <g key={point.id} className={isHighlighted ? "firing-point-highlighted" : ""}>
                     <circle
                       cx={point.x}
                       cy={point.y}
                       r={safetyRadius}
-                      fill={zone?.color || "#64748b"}
-                      fillOpacity="0.15"
-                      stroke={zone?.color || "#64748b"}
-                      strokeWidth="1"
+                      fill={hasConflict ? "#dc2626" : zone?.color || "#64748b"}
+                      fillOpacity={isHighlighted ? "0.25" : "0.15"}
+                      stroke={hasConflict ? "#dc2626" : zone?.color || "#64748b"}
+                      strokeWidth={isHighlighted ? 2 : 1}
                       strokeDasharray="4 2"
                       style={{ pointerEvents: "none" }}
                     />
@@ -1186,12 +1303,16 @@ function App() {
                       cx={point.x}
                       cy={point.y}
                       r={14}
-                      fill={zone?.color || "#64748b"}
-                      stroke={isSelected ? "#172033" : "#ffffff"}
-                      strokeWidth={isSelected ? 3 : 2}
+                      fill={pointFill}
+                      stroke={isHighlighted ? "#f59e0b" : isSelected ? "#172033" : "#ffffff"}
+                      strokeWidth={isHighlighted ? 4 : isSelected ? 3 : 2}
                       style={{
                         cursor: "grab",
-                        filter: isDragging ? "drop-shadow(0 4px 8px rgba(0,0,0,0.3))" : "drop-shadow(0 2px 4px rgba(0,0,0,0.2))",
+                        filter: isDragging
+                          ? "drop-shadow(0 4px 8px rgba(0,0,0,0.3))"
+                          : isHighlighted
+                          ? "drop-shadow(0 0 10px rgba(245, 158, 11, 0.8))"
+                          : "drop-shadow(0 2px 4px rgba(0,0,0,0.2))",
                         transition: "filter 0.15s ease",
                       }}
                       onMouseDown={(e) => handlePointDragStart(e, point.id)}
@@ -1406,6 +1527,36 @@ function App() {
           onSelectSegment={handleSelectSegment}
           onUpdateRecord={handleUpdateRecord}
           onSelectRecord={handleSelectRecordForForm}
+          highlightedRecordIds={highlightedRecordIds}
+          conflictRecordIds={conflictRecordIds}
+        />
+      </section>
+
+      <section className="panel conflict-panel-gap">
+        <div className="heading">
+          <div>
+            <p>安全检测</p>
+            <h2>冲突检测中心</h2>
+          </div>
+          <button
+            onClick={() => {
+              setSelectedConflictId(null);
+              setHighlightedRecordIds([]);
+              setHighlightedPointIds([]);
+            }}
+          >
+            清除高亮
+          </button>
+        </div>
+        <ConflictCenter
+          conflicts={conflicts}
+          records={records}
+          firingPoints={firingPoints}
+          selectedConflictId={selectedConflictId}
+          onSelectConflict={setSelectedConflictId}
+          onHighlightRecords={setHighlightedRecordIds}
+          onHighlightPoints={setHighlightedPointIds}
+          onLocateRecord={handleLocateRecord}
         />
       </section>
 
@@ -1481,6 +1632,23 @@ function App() {
                 </label>
               );
             })}
+            <label className="field-full">
+              <span>点火点位（用于冲突检测）</span>
+              <select
+                value={formData.firingPointId}
+                onChange={(e) => handleFormChange("firingPointId", e.target.value)}
+              >
+                <option value="">未指定（不参与点位冲突检测）</option>
+                {firingPoints.map((fp) => {
+                  const zone = getZoneById(fp.zoneId);
+                  return (
+                    <option key={fp.id} value={fp.id}>
+                      {fp.name} — {zone?.name || fp.zoneId}（安全距离 {fp.safetyDistance}m）
+                    </option>
+                  );
+                })}
+              </select>
+            </label>
           </div>
         </section>
       </section>
@@ -1496,9 +1664,28 @@ function App() {
         <div className="records">
           {records.map((record: FiringRecord, index: number) => {
             const seg = getSegmentById(record.segmentId);
+            const point = record.firingPointId
+              ? firingPoints.find((p) => p.id === record.firingPointId)
+              : null;
+            const hasConflict = conflictRecordIds.includes(record.id);
+            const isHighlighted = highlightedRecordIds.includes(record.id);
             return (
-              <article key={record.id}>
-                <b style={{ background: seg?.themeColor }}>
+              <article
+                key={record.id}
+                style={{
+                  borderColor: hasConflict ? "#dc2626" : undefined,
+                  boxShadow: isHighlighted
+                    ? "0 0 0 2px #f59e0b, 0 4px 12px rgba(245, 158, 11, 0.2)"
+                    : undefined,
+                  cursor: "pointer",
+                }}
+                onClick={() => handleSelectRecordForForm(record)}
+              >
+                <b
+                  style={{
+                    background: hasConflict ? "#dc2626" : seg?.themeColor,
+                  }}
+                >
                   {String(index + 1).padStart(2, "0")}
                 </b>
                 <div>
@@ -1516,10 +1703,35 @@ function App() {
                         {seg.type}
                       </span>
                     )}
+                    {point && (
+                      <span
+                        className="record-segment-tag"
+                        style={{
+                          background: "#fef3c7",
+                          color: "#b45309",
+                          borderColor: "#fde68a",
+                        }}
+                      >
+                        点位 {point.name}
+                      </span>
+                    )}
+                    {hasConflict && (
+                      <span
+                        className="record-segment-tag"
+                        style={{
+                          background: "#fee2e2",
+                          color: "#dc2626",
+                          borderColor: "#fecaca",
+                        }}
+                      >
+                        ⚠ 有冲突
+                      </span>
+                    )}
                   </div>
                   <p>
                     {[
                       seg?.name,
+                      point ? `${getZoneById(point.zoneId)?.name || ""} ${point.name}` : null,
                       record.caliber,
                       record.angle,
                       record.ignitionTime,

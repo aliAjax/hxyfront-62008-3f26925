@@ -29,6 +29,8 @@ interface TimelineEditorProps {
   onSelectSegment: (id: string) => void;
   onUpdateRecord: (updated: FiringRecord) => void;
   onSelectRecord: (record: FiringRecord) => void;
+  highlightedRecordIds?: string[];
+  conflictRecordIds?: string[];
 }
 
 const timeToMs = (time: string): number => {
@@ -95,6 +97,8 @@ const TimelineEditor: React.FC<TimelineEditorProps> = ({
   onSelectSegment,
   onUpdateRecord,
   onSelectRecord,
+  highlightedRecordIds = [],
+  conflictRecordIds = [],
 }) => {
   const [pxPerSec, setPxPerSec] = useState(DEFAULT_PX_PER_SEC);
   const [scrollLeft, setScrollLeft] = useState(0);
@@ -420,6 +424,8 @@ const TimelineEditor: React.FC<TimelineEditorProps> = ({
                       const isSelected = selectedRecordId === record.id;
                       const isHovered = hoveredRecordId === record.id;
                       const isDragging = draggingId === record.id;
+                      const isHighlighted = highlightedRecordIds.includes(record.id);
+                      const hasConflict = conflictRecordIds.includes(record.id);
 
                       const clampedLeft = Math.max(
                         (segStartMs / 1000) * pxPerSec,
@@ -429,25 +435,36 @@ const TimelineEditor: React.FC<TimelineEditorProps> = ({
                         )
                       );
 
+                      const nodeBg = hasConflict
+                        ? `linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)`
+                        : `linear-gradient(135deg, ${segment.themeColor} 0%, ${segment.themeColor}dd 100%)`;
+                      const nodeBorderColor = isSelected
+                        ? "#172033"
+                        : hasConflict
+                        ? "#dc2626"
+                        : `${segment.themeColor}`;
+
                       return (
                         <div
                           key={record.id}
                           className={`timeline-node ${
                             isSelected ? "selected" : ""
-                          } ${isDragging ? "dragging" : ""}`}
+                          } ${isDragging ? "dragging" : ""} ${
+                            isHighlighted ? "highlighted" : ""
+                          } ${hasConflict ? "has-conflict" : ""}`}
                           style={{
                             left: clampedLeft,
                             width: nodeW,
-                            background: `linear-gradient(135deg, ${segment.themeColor} 0%, ${segment.themeColor}dd 100%)`,
-                            borderColor: isSelected
-                              ? "#172033"
-                              : `${segment.themeColor}`,
+                            background: nodeBg,
+                            borderColor: nodeBorderColor,
                             boxShadow: isDragging
-                              ? `0 8px 20px ${segment.themeColor}60`
+                              ? `0 8px 20px ${hasConflict ? "#dc2626" : segment.themeColor}60`
+                              : isHighlighted
+                              ? `0 0 0 3px #f59e0b, 0 4px 12px ${hasConflict ? "#dc2626" : segment.themeColor}50`
                               : isSelected
-                              ? `0 4px 12px ${segment.themeColor}50`
+                              ? `0 4px 12px ${hasConflict ? "#dc2626" : segment.themeColor}50`
                               : isHovered
-                              ? `0 2px 8px ${segment.themeColor}30`
+                              ? `0 2px 8px ${hasConflict ? "#dc2626" : segment.themeColor}30`
                               : "none",
                           }}
                           onMouseDown={(e) =>
