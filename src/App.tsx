@@ -1,7 +1,8 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import "./styles.css";
 import TimelineEditor from "./TimelineEditor";
 import ConflictCenter from "./ConflictCenter";
+import MusicSync, { MusicMarker, SnapHistoryEntry } from "./MusicSync";
 import {
   detectConflicts,
   Conflict as ConflictType,
@@ -391,6 +392,19 @@ function App() {
   const [highlightedRecordIds, setHighlightedRecordIds] = useState<string[]>([]);
   const [highlightedPointIds, setHighlightedPointIds] = useState<string[]>([]);
 
+  const [musicDuration, setMusicDuration] = useState("04:30.000");
+  const [musicMarkers, setMusicMarkers] = useState<MusicMarker[]>([
+    { id: "mk-1", time: "00:00.000", label: "序幕入点", type: "segment-entry" },
+    { id: "mk-2", time: "00:30.000", label: "高潮A入点", type: "segment-entry" },
+    { id: "mk-3", time: "00:45.000", label: "主旋律节拍", type: "beat" },
+    { id: "mk-4", time: "01:08.000", label: "齐射节拍", type: "beat" },
+    { id: "mk-5", time: "01:30.000", label: "间奏节拍", type: "beat" },
+    { id: "mk-6", time: "03:00.000", label: "终章入点", type: "segment-entry" },
+    { id: "mk-7", time: "03:42.000", label: "压轴齐射", type: "beat" },
+  ]);
+  const [snapHistory, setSnapHistory] = useState<SnapHistoryEntry[]>([]);
+  const [showMusicSync, setShowMusicSync] = useState(true);
+
   const conflicts = useMemo(
     () => detectConflicts(records, segments, firingPoints),
     [records, segments, firingPoints]
@@ -733,6 +747,33 @@ function App() {
       handleUpdatePoint(updated);
     }
   };
+
+  const handleMusicDurationChange = useCallback((duration: string) => {
+    setMusicDuration(duration);
+  }, []);
+
+  const handleMusicMarkersChange = useCallback((newMarkers: MusicMarker[]) => {
+    setMusicMarkers(newMarkers);
+  }, []);
+
+  const handleSnapToMarker = useCallback((recordId: string, markerId: string, originalTime: string, snappedTime: string) => {
+    setSnapHistory((prev) => [
+      ...prev,
+      { recordId, originalTime, snappedTime, markerId },
+    ]);
+  }, []);
+
+  const handleUndoSnap = useCallback((entry: SnapHistoryEntry) => {
+    const record = records.find((r) => r.id === entry.recordId);
+    if (record) {
+      handleUpdateRecord({ ...record, ignitionTime: entry.originalTime });
+    }
+    setSnapHistory((prev) => prev.filter((e) => e !== entry));
+  }, [records, handleUpdateRecord]);
+
+  const handleClearSnapHistory = useCallback(() => {
+    setSnapHistory([]);
+  }, []);
 
   const metricCounts = [segments.length, records.length, conflicts.length, firingPoints.length];
 
@@ -1496,6 +1537,40 @@ function App() {
         </div>
       </section>
 
+      <section className="panel music-sync-panel">
+        <div className="heading">
+          <div>
+            <p>音乐同步</p>
+            <h2>音乐时间点同步</h2>
+          </div>
+          <button onClick={() => setShowMusicSync(!showMusicSync)}>
+            {showMusicSync ? "收起" : "展开"}
+          </button>
+        </div>
+        {showMusicSync && (
+          <MusicSync
+            musicDuration={musicDuration}
+            markers={musicMarkers}
+            onDurationChange={handleMusicDurationChange}
+            onMarkersChange={handleMusicMarkersChange}
+            snapHistory={snapHistory}
+            onUndoSnap={handleUndoSnap}
+            onClearSnapHistory={handleClearSnapHistory}
+            segments={segments.map((s) => ({
+              id: s.id,
+              name: s.name,
+              startTime: s.startTime,
+              endTime: s.endTime,
+              themeColor: s.themeColor,
+            }))}
+            records={records.map((r) => ({
+              id: r.id,
+              ignitionTime: r.ignitionTime,
+            }))}
+          />
+        )}
+      </section>
+
       <section className="panel timeline-panel">
         <div className="heading">
           <div>
@@ -1524,6 +1599,9 @@ function App() {
           onSelectRecord={handleSelectRecordForForm}
           highlightedRecordIds={highlightedRecordIds}
           conflictRecordIds={conflictRecordIds}
+          musicDuration={musicDuration}
+          musicMarkers={musicMarkers}
+          onSnapToMarker={handleSnapToMarker}
         />
       </section>
 

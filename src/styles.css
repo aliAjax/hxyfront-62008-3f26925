@@ -1724,3 +1724,624 @@ input {
     align-items: flex-start;
   }
 }
+
+.music-sync-panel {
+  margin-bottom: 18px;
+}
+
+.music-sync {
+  display: grid;
+  gap: 18px;
+}
+
+.music-sync-duration {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.music-duration-field {
+  display: grid;
+  gap: 8px;
+}
+
+.music-duration-field > span:first-child {
+  font-size: 13px;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.duration-input-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.duration-input-row .time-input-ms {
+  flex: 1;
+  font-family: "SF Mono", Menlo, Consolas, monospace;
+  font-size: 14px;
+  min-height: 42px;
+}
+
+.duration-input-row button {
+  flex-shrink: 0;
+  min-height: 42px;
+  padding: 0 16px;
+}
+
+.duration-display {
+  font-family: "SF Mono", Menlo, Consolas, monospace;
+  font-size: 12px;
+  color: #475569;
+}
+
+.music-sync-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.music-sync-actions button {
+  font-size: 13px;
+  min-height: 36px;
+  padding: 0 14px;
+}
+
+.music-sync-warnings {
+  padding: 14px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  border-left: 4px solid #dc2626;
+}
+
+.music-sync-warnings h4 {
+  margin: 0 0 8px 0;
+  color: #dc2626;
+  font-size: 14px;
+}
+
+.warning-desc {
+  margin: 0 0 10px 0;
+  font-size: 13px;
+  color: #7f1d1d;
+}
+
+.warning-list {
+  display: grid;
+  gap: 6px;
+}
+
+.warning-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  background: #ffffff;
+  border-radius: 6px;
+  border: 1px solid #fecaca;
+  font-size: 13px;
+}
+
+.warning-type {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.warning-type.tag-marker {
+  background: #ede9fe;
+  color: #7c3aed;
+}
+
+.warning-type.tag-segment {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.warning-type.tag-record {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.warning-name {
+  font-weight: 600;
+  color: #172033;
+  min-width: 60px;
+}
+
+.warning-time {
+  font-family: "SF Mono", Menlo, Consolas, monospace;
+  font-size: 12px;
+  color: #64748b;
+}
+
+.warning-exceed {
+  font-family: "SF Mono", Menlo, Consolas, monospace;
+  font-size: 12px;
+  color: #dc2626;
+  font-weight: 600;
+  margin-left: auto;
+}
+
+.music-sync-duplicates {
+  padding: 14px;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 8px;
+  border-left: 4px solid #f59e0b;
+}
+
+.music-sync-duplicates h4 {
+  margin: 0 0 8px 0;
+  color: #b45309;
+  font-size: 14px;
+}
+
+.duplicate-item {
+  font-size: 13px;
+  color: #713f12;
+  padding: 6px 0;
+}
+
+.music-sync-marker-form {
+  padding: 16px;
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.music-sync-marker-form h4 {
+  margin: 0 0 14px 0;
+  color: #475569;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.marker-form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto auto;
+  gap: 12px;
+  align-items: end;
+}
+
+.marker-form-row label {
+  display: grid;
+  gap: 6px;
+}
+
+.marker-form-row label span {
+  font-size: 12px;
+  color: #64748b;
+}
+
+.marker-form-row .time-input-ms {
+  font-family: "SF Mono", Menlo, Consolas, monospace;
+  font-size: 14px;
+}
+
+.marker-form-row select {
+  width: 100%;
+  min-height: 42px;
+  border-radius: 7px;
+  border: 1px solid var(--border);
+  padding: 0 12px;
+  background: #ffffff;
+  font: inherit;
+  cursor: pointer;
+}
+
+.marker-form-row button {
+  min-height: 42px;
+  padding: 0 16px;
+}
+
+.music-sync-marker-list h4 {
+  margin: 0 0 12px 0;
+  color: #475569;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.marker-items {
+  display: grid;
+  gap: 8px;
+  max-height: 320px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.marker-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fbfdff;
+  transition: all 0.15s ease;
+}
+
+.marker-item:hover {
+  border-color: color-mix(in srgb, var(--primary) 40%, var(--border));
+  background: #f5f9ff;
+}
+
+.marker-item.out-of-bounds {
+  border-color: #fecaca;
+  background: #fef2f2;
+}
+
+.marker-item.editing {
+  border-color: var(--primary);
+  background: #f5f9ff;
+}
+
+.marker-type-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.marker-type-dot.beat {
+  background: #7c3aed;
+}
+
+.marker-type-dot.segment-entry {
+  background: #059669;
+}
+
+.marker-time {
+  font-family: "SF Mono", Menlo, Consolas, monospace;
+  font-size: 13px;
+  font-weight: 600;
+  color: #172033;
+  min-width: 90px;
+}
+
+.marker-label {
+  flex: 1;
+  font-size: 13px;
+  color: #334155;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.marker-type-tag {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.marker-type-tag.tag-beat {
+  background: #ede9fe;
+  color: #7c3aed;
+}
+
+.marker-type-tag.tag-segment-entry {
+  background: #d1fae5;
+  color: #059669;
+}
+
+.marker-oob {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: #fee2e2;
+  color: #dc2626;
+  animation: pulse-oob 2s ease-in-out infinite;
+}
+
+@keyframes pulse-oob {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+.marker-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.marker-edit-row {
+  display: grid;
+  grid-template-columns: 100px 1fr 100px auto auto;
+  gap: 8px;
+  align-items: center;
+  width: 100%;
+}
+
+.marker-edit-row .time-input-ms {
+  font-family: "SF Mono", Menlo, Consolas, monospace;
+  font-size: 13px;
+  min-height: 34px;
+}
+
+.marker-edit-row input {
+  min-height: 34px;
+  font-size: 13px;
+}
+
+.marker-edit-row select {
+  width: 100%;
+  min-height: 34px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  padding: 0 8px;
+  background: #ffffff;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.marker-edit-row button {
+  min-height: 34px;
+  padding: 0 10px;
+  font-size: 12px;
+}
+
+.music-sync-snap-panel {
+  padding: 14px;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 8px;
+}
+
+.snap-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.snap-panel-header h4 {
+  margin: 0;
+  color: #059669;
+  font-size: 14px;
+}
+
+.snap-panel-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.snap-panel-actions button {
+  min-height: 30px;
+  padding: 0 10px;
+  font-size: 12px;
+}
+
+.snap-history-list {
+  display: grid;
+  gap: 6px;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.snap-history-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  background: #ffffff;
+  border: 1px solid #bbf7d0;
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+.snap-idx {
+  font-weight: 700;
+  color: #059669;
+  font-size: 12px;
+  min-width: 28px;
+}
+
+.snap-info {
+  font-family: "SF Mono", Menlo, Consolas, monospace;
+  font-size: 12px;
+  color: #334155;
+  flex: 1;
+}
+
+.snap-undo-btn {
+  min-height: 28px;
+  padding: 0 10px;
+  font-size: 11px;
+  background: #ffffff;
+  color: #dc2626;
+  border-color: #fecaca;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.snap-undo-btn:hover {
+  background: #dc2626;
+  color: #ffffff;
+  border-color: #dc2626;
+}
+
+.snap-empty {
+  text-align: center;
+  color: #64748b;
+  font-size: 13px;
+  padding: 16px;
+  margin: 0;
+}
+
+.time-input-ms {
+  font-family: "SF Mono", Menlo, Consolas, monospace;
+  font-size: 14px;
+  min-height: 42px;
+  border-radius: 7px;
+  border: 1px solid var(--border);
+  padding: 0 12px;
+  width: 100%;
+  background: #ffffff;
+}
+
+@media (max-width: 860px) {
+  .marker-form-row {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .marker-edit-row {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.timeline-music-marker {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  z-index: 3;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+}
+
+.timeline-music-marker.snapped {
+  z-index: 4;
+}
+
+.music-marker-line {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 2px;
+}
+
+.music-marker-line.beat {
+  background: #7c3aed60;
+  border-left: 1px dashed #7c3aed;
+}
+
+.music-marker-line.segment-entry {
+  background: #05966960;
+  border-left: 2px solid #059669;
+}
+
+.timeline-music-marker.snapped .music-marker-line {
+  width: 4px;
+}
+
+.timeline-music-marker.snapped .music-marker-line.beat {
+  background: #7c3aed90;
+}
+
+.timeline-music-marker.snapped .music-marker-line.segment-entry {
+  background: #05966990;
+}
+
+.music-marker-label {
+  position: absolute;
+  top: 26px;
+  left: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  color: #475569;
+  white-space: nowrap;
+  background: #ffffffcc;
+  padding: 1px 4px;
+  border-radius: 3px;
+  pointer-events: none;
+}
+
+.timeline-music-duration-line {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  z-index: 3;
+  pointer-events: none;
+}
+
+.music-duration-marker {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 3px;
+  background: #dc2626;
+}
+
+.music-duration-label {
+  position: absolute;
+  top: 2px;
+  left: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #dc2626;
+  white-space: nowrap;
+  background: #ffffffdd;
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+
+.timeline-seg-boundary {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  border-left: 1px dashed;
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0.6;
+}
+
+.timeline-track-marker {
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  width: 1px;
+  border-left: 1px dashed;
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0.5;
+}
+
+.timeline-track-marker.snapped {
+  width: 3px;
+  opacity: 1;
+}
+
+.timeline-track-marker.beat {
+  border-left-style: dotted;
+}
+
+.timeline-track-marker.segment-entry {
+  border-left-style: solid;
+  border-left-width: 2px;
+}
+
+@media (max-width: 860px) {
+  .music-sync-duration {
+    padding: 12px;
+  }
+
+  .marker-form-row {
+    grid-template-columns: 1fr;
+  }
+
+  .marker-item {
+    flex-wrap: wrap;
+  }
+
+  .snap-history-item {
+    flex-wrap: wrap;
+  }
+}

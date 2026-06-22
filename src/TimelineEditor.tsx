@@ -22,6 +22,13 @@ interface FiringRecord {
   remark: string;
 }
 
+interface MusicMarker {
+  id: string;
+  time: string;
+  label: string;
+  type: "beat" | "segment-entry";
+}
+
 interface TimelineEditorProps {
   segments: Segment[];
   records: FiringRecord[];
@@ -31,6 +38,9 @@ interface TimelineEditorProps {
   onSelectRecord: (record: FiringRecord) => void;
   highlightedRecordIds?: string[];
   conflictRecordIds?: string[];
+  musicDuration?: string;
+  musicMarkers?: MusicMarker[];
+  onSnapToMarker?: (recordId: string, markerId: string, originalTime: string, snappedTime: string) => void;
 }
 
 const timeToMs = (time: string): number => {
@@ -89,6 +99,7 @@ const ROW_GAP = 8;
 const SEG_LABEL_WIDTH = 180;
 const TIMELINE_HEADER_HEIGHT = 44;
 const NODE_MIN_WIDTH = 28;
+const SNAP_THRESHOLD_PX = 12;
 
 const TimelineEditor: React.FC<TimelineEditorProps> = ({
   segments,
@@ -99,6 +110,9 @@ const TimelineEditor: React.FC<TimelineEditorProps> = ({
   onSelectRecord,
   highlightedRecordIds = [],
   conflictRecordIds = [],
+  musicDuration = "",
+  musicMarkers = [],
+  onSnapToMarker,
 }) => {
   const [pxPerSec, setPxPerSec] = useState(DEFAULT_PX_PER_SEC);
   const [scrollLeft, setScrollLeft] = useState(0);
@@ -106,6 +120,7 @@ const TimelineEditor: React.FC<TimelineEditorProps> = ({
   const [dragOffsetX, setDragOffsetX] = useState(0);
   const [selectedRecordId, setSelectedRecordId] = useState<string | null>(null);
   const [hoveredRecordId, setHoveredRecordId] = useState<string | null>(null);
+  const [snappedMarkerId, setSnappedMarkerId] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const dragDataRef = useRef<{
@@ -114,7 +129,10 @@ const TimelineEditor: React.FC<TimelineEditorProps> = ({
     segStartMs: number;
     segEndMs: number;
     durationMs: number;
+    originalIgnitionTime: string;
   } | null>(null);
+
+  const musicDurationMs = timeToMs(musicDuration);
 
   const totalTimeMs = useMemo(() => {
     let max = 0;
@@ -126,8 +144,9 @@ const TimelineEditor: React.FC<TimelineEditorProps> = ({
       const end = timeToMs(r.ignitionTime) + durationToMs(r.duration);
       if (end > max) max = end;
     });
+    if (musicDurationMs > max) max = musicDurationMs;
     return Math.max(max + 30000, 240000);
-  }, [segments, records]);
+  }, [segments, records, musicDurationMs]);
 
   const timelineWidth = (totalTimeMs / 1000) * pxPerSec;
 
@@ -150,6 +169,10 @@ const TimelineEditor: React.FC<TimelineEditorProps> = ({
     return map;
   }, [segments, records]);
 
+  const sortedMusicMarkers = useMemo(() => {
+    return [...musicMarkers].sort((a, b) => timeToMs(a.time) - timeToMs(b.time));
+  }, [musicMarkers]);
+
   const tickMarks = useMemo(() => {
     const ticks: { ms: number; label: string; major: boolean }[] = [];
     const stepSec = pxPerSec < 40 ? 10 : pxPerSec < 100 ? 5 : pxPerSec < 200 ? 2 : 1;
@@ -163,6 +186,23 @@ const TimelineEditor: React.FC<TimelineEditorProps> = ({
     }
     return ticks;
   }, [totalTimeMs, pxPerSec]);
+
+  const findNearestMarker = useCallback((ms: number): { marker: MusicMarker; distancePx: number } | null => {
+    let nearest: MusicMarker | null = null;
+    let nearestDist = Infinity;
+    for (const marker of musicMarkers) {
+      const markerMs = timeToMs(marker.time);
+      const distPx = Math.abs((markerMs - ms) / 1000) * pxPerSec;
+      if (distPx < nearestDist) {
+        nearestDist = distPx;
+        nearest = marker;
+      }
+    }
+    if (nearest && nearestDist <= SNAP_THRESHOLD_PX) {
+      return { marker: nearest, distancePx: nearestDist };
+    }
+    return null;
+  }, [musicMarkers, pxPerSec]);
 
   const handleZoom = (delta: number) => {
     setPxPerSec((prev) => {
@@ -209,6 +249,7 @@ const TimelineEditor: React.FC<TimelineEditorProps> = ({
       segStartMs: timeToMs(seg.startTime),
       segEndMs: timeToMs(seg.endTime),
       durationMs: durationToMs(record.duration),
+      originalIgnitionTime: record.ignitionTime,
     };
   };
 
@@ -232,36 +273,45 @@ const TimelineEditor: React.FC<TimelineEditorProps> = ({
 
       newX = Math.max(minX, Math.min(maxX, newX));
 
-      const newIgnitionMs = (newX / pxPerSec) * 1000;
+      let newIgnitionMs = (newX / pxPerSec) * 1000;
+
+      const snapResult = findNearestMarker(newIgnitionMs);
+      if (snapResult) {
+        newIgnitionMs = timeToMs(snapResult.marker.time);
+        setSnappedMarkerId(snapResult.marker.id);
+      } else {
+        setSnappedMarkerId(null);
+      }
+
       const newIgnitionTime = msToTime(newIgnitionMs);
 
       const record = records.find((r) => r.id === draggingId);
       if (record && record.ignitionTime !== newIgnitionTime) {
         const updated = { ...record, ignitionTime: newIgnitionTime };
         onUpdateRecord(updated);
-
-        const segRecs = recordsBySegment[record.segmentId] || [];
-        const otherRecs = segRecs.filter((r) => r.id !== record.id);
-        const sortedWithNew = [...otherRecs, updated].sort(
-          (a, b) => timeToMs(a.ignitionTime) - timeToMs(b.ignitionTime)
-        );
-        const newIndex = sortedWithNew.findIndex((r) => r.id === record.id);
-        void newIndex;
       }
     },
-    [draggingId, dragOffsetX, pxPerSec, records, recordsBySegment, onUpdateRecord]
+    [draggingId, dragOffsetX, pxPerSec, records, onUpdateRecord, findNearestMarker]
   );
 
   const handleMouseUp = useCallback(() => {
     if (draggingId) {
       const record = records.find((r) => r.id === draggingId);
-      if (record) {
+      if (record && dragDataRef.current) {
+        const originalTime = dragDataRef.current.originalIgnitionTime;
+        if (record.ignitionTime !== originalTime && snappedMarkerId) {
+          const marker = musicMarkers.find((m) => m.id === snappedMarkerId);
+          if (marker && onSnapToMarker) {
+            onSnapToMarker(record.id, marker.id, originalTime, record.ignitionTime);
+          }
+        }
         onSelectRecord(record);
       }
     }
     setDraggingId(null);
     dragDataRef.current = null;
-  }, [draggingId, records, onSelectRecord]);
+    setSnappedMarkerId(null);
+  }, [draggingId, records, onSelectRecord, snappedMarkerId, musicMarkers, onSnapToMarker]);
 
   useEffect(() => {
     if (draggingId) {
@@ -314,7 +364,7 @@ const TimelineEditor: React.FC<TimelineEditorProps> = ({
           </button>
         </div>
         <div className="timeline-tips">
-          <small>提示：Ctrl+滚轮缩放 · 拖动节点调整点火时间 · 节点颜色匹配段落主题</small>
+          <small>提示：Ctrl+滚轮缩放 · 拖动节点调整点火时间 · 节点可吸附到音乐标记{musicMarkers.length > 0 ? ` (${musicMarkers.length}个标记)` : ""}</small>
         </div>
       </div>
 
@@ -349,7 +399,7 @@ const TimelineEditor: React.FC<TimelineEditorProps> = ({
             >
               {tickMarks.map((tick, i) => (
                 <div
-                  key={i}
+                  key={`tick-${i}`}
                   className={`timeline-tick ${tick.major ? "major" : "minor"}`}
                   style={{
                     left: (tick.ms / 1000) * pxPerSec,
@@ -361,6 +411,33 @@ const TimelineEditor: React.FC<TimelineEditorProps> = ({
                   )}
                 </div>
               ))}
+
+              {sortedMusicMarkers.map((marker) => {
+                const markerMs = timeToMs(marker.time);
+                const markerX = (markerMs / 1000) * pxPerSec;
+                const isSnapped = snappedMarkerId === marker.id;
+                return (
+                  <div
+                    key={marker.id}
+                    className={`timeline-music-marker ${marker.type} ${isSnapped ? "snapped" : ""}`}
+                    style={{ left: markerX }}
+                    title={`${marker.label} (${marker.time})`}
+                  >
+                    <div className={`music-marker-line ${marker.type}`} />
+                    <span className="music-marker-label">{marker.label}</span>
+                  </div>
+                );
+              })}
+
+              {musicDurationMs > 0 && (
+                <div
+                  className="timeline-music-duration-line"
+                  style={{ left: (musicDurationMs / 1000) * pxPerSec }}
+                >
+                  <div className="music-duration-marker" />
+                  <span className="music-duration-label">音乐终线 {musicDuration}</span>
+                </div>
+              )}
             </div>
           </div>
 
@@ -412,6 +489,38 @@ const TimelineEditor: React.FC<TimelineEditorProps> = ({
                         borderColor: `${segment.themeColor}50`,
                       }}
                     />
+
+                    <div
+                      className="timeline-seg-boundary start"
+                      style={{
+                        left: (segStartMs / 1000) * pxPerSec,
+                        borderColor: `${segment.themeColor}80`,
+                      }}
+                    />
+                    <div
+                      className="timeline-seg-boundary end"
+                      style={{
+                        left: (segEndMs / 1000) * pxPerSec,
+                        borderColor: `${segment.themeColor}80`,
+                      }}
+                    />
+
+                    {sortedMusicMarkers.map((marker) => {
+                      const markerMs = timeToMs(marker.time);
+                      if (markerMs < segStartMs || markerMs > segEndMs) return null;
+                      const isSnapped = snappedMarkerId === marker.id;
+                      return (
+                        <div
+                          key={`track-${marker.id}`}
+                          className={`timeline-track-marker ${marker.type} ${isSnapped ? "snapped" : ""}`}
+                          style={{
+                            left: (markerMs / 1000) * pxPerSec,
+                            borderColor: marker.type === "beat" ? "#7c3aed80" : "#05966980",
+                          }}
+                          title={`${marker.label} (${marker.time})`}
+                        />
+                      );
+                    })}
 
                     {segRecs.map((record) => {
                       const ignitionMs = timeToMs(record.ignitionTime);
@@ -526,6 +635,16 @@ const TimelineEditor: React.FC<TimelineEditorProps> = ({
           <span>
             节点数：<strong>{records.length}</strong>
           </span>
+          {musicDurationMs > 0 && (
+            <span>
+              音乐时长：<strong>{musicDuration}</strong>
+            </span>
+          )}
+          {musicMarkers.length > 0 && (
+            <span>
+              音乐标记：<strong>{musicMarkers.length}</strong>
+            </span>
+          )}
         </div>
         {selectedRecordId && (
           <div className="timeline-selected-info">
