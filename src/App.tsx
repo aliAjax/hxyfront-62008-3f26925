@@ -245,11 +245,6 @@ const timeToMs = (time: string): number => {
 
 const sortRecordsByTime = (recs: FiringRecord[], segs: Segment[]): FiringRecord[] => {
   return [...recs].sort((a, b) => {
-    const segA = segs.find((s) => s.id === a.segmentId);
-    const segB = segs.find((s) => s.id === b.segmentId);
-    const segStartA = segA ? timeToMs(segA.startTime) : 0;
-    const segStartB = segB ? timeToMs(segB.startTime) : 0;
-    if (segStartA !== segStartB) return segStartA - segStartB;
     return timeToMs(a.ignitionTime) - timeToMs(b.ignitionTime);
   });
 };

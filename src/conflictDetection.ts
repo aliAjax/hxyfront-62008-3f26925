@@ -131,9 +131,7 @@ const getAbsoluteIgnitionMs = (
   record: FiringRecord,
   segments: Segment[]
 ): number => {
-  const seg = segments.find((s) => s.id === record.segmentId);
-  const segStart = seg ? timeToMs(seg.startTime) : 0;
-  return segStart + timeToMs(record.ignitionTime);
+  return timeToMs(record.ignitionTime);
 };
 
 const getRecordEndMs = (
