@@ -3,6 +3,7 @@ import "./styles.css";
 import TimelineEditor from "./TimelineEditor";
 import ConflictCenter from "./ConflictCenter";
 import MusicSync, { MusicMarker, SnapHistoryEntry } from "./MusicSync";
+import ShowPreview from "./ShowPreview";
 import {
   detectConflicts,
   Conflict as ConflictType,
@@ -404,6 +405,10 @@ function App() {
   ]);
   const [snapHistory, setSnapHistory] = useState<SnapHistoryEntry[]>([]);
   const [showMusicSync, setShowMusicSync] = useState(true);
+
+  const [showPreview, setShowPreview] = useState(false);
+  const [previewCurrentTimeMs, setPreviewCurrentTimeMs] = useState(-1);
+  const [previewActiveRecordIds, setPreviewActiveRecordIds] = useState<string[]>([]);
 
   const conflicts = useMemo(
     () => detectConflicts(records, segments, firingPoints),
@@ -1581,6 +1586,19 @@ function App() {
           </div>
           <div style={{ display: "flex", gap: 8 }}>
             <button
+              className={showPreview ? "primary" : ""}
+              onClick={() => {
+                if (showPreview) {
+                  setPreviewCurrentTimeMs(-1);
+                  setPreviewActiveRecordIds([]);
+                }
+                setShowPreview(!showPreview);
+              }}
+              title="打开/关闭整场预览"
+            >
+              {showPreview ? "✓ 预览中" : "▶ 整场预览"}
+            </button>
+            <button
               onClick={() => {
                 const firstSeg = segments[0];
                 if (firstSeg) handleSelectSegment(firstSeg.id);
@@ -1604,8 +1622,27 @@ function App() {
           musicDuration={musicDuration}
           musicMarkers={musicMarkers}
           onSnapToMarker={handleSnapToMarker}
+          currentTimeMs={showPreview ? previewCurrentTimeMs : -1}
+          activeRecordIds={previewActiveRecordIds}
         />
       </section>
+
+      {showPreview && (
+        <section className="panel preview-panel">
+          <ShowPreview
+            segments={segments}
+            records={records}
+            firingPoints={firingPoints}
+            zones={zones}
+            conflicts={conflicts}
+            conflictRecordIds={conflictRecordIds}
+            musicDuration={musicDuration}
+            onLocateRecord={handleLocateRecord}
+            onTimeChange={(ms) => setPreviewCurrentTimeMs(ms)}
+            onActiveRecordsChange={(ids) => setPreviewActiveRecordIds(ids)}
+          />
+        </section>
+      )}
 
       <section className="panel conflict-panel-gap">
         <div className="heading">

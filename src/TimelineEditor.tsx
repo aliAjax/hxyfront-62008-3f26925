@@ -41,6 +41,8 @@ interface TimelineEditorProps {
   musicDuration?: string;
   musicMarkers?: MusicMarker[];
   onSnapToMarker?: (recordId: string, markerId: string, originalTime: string, snappedTime: string) => void;
+  currentTimeMs?: number;
+  activeRecordIds?: string[];
 }
 
 const timeToMs = (time: string): number => {
@@ -113,6 +115,8 @@ const TimelineEditor: React.FC<TimelineEditorProps> = ({
   musicDuration = "",
   musicMarkers = [],
   onSnapToMarker,
+  currentTimeMs = -1,
+  activeRecordIds = [],
 }) => {
   const [pxPerSec, setPxPerSec] = useState(DEFAULT_PX_PER_SEC);
   const [scrollLeft, setScrollLeft] = useState(0);
@@ -438,6 +442,16 @@ const TimelineEditor: React.FC<TimelineEditorProps> = ({
                   <span className="music-duration-label">音乐终线 {musicDuration}</span>
                 </div>
               )}
+
+              {currentTimeMs >= 0 && (
+                <div
+                  className="timeline-playhead"
+                  style={{ left: (currentTimeMs / 1000) * pxPerSec }}
+                >
+                  <div className="playhead-triangle" />
+                  <div className="playhead-line" />
+                </div>
+              )}
             </div>
           </div>
 
@@ -535,6 +549,7 @@ const TimelineEditor: React.FC<TimelineEditorProps> = ({
                       const isDragging = draggingId === record.id;
                       const isHighlighted = highlightedRecordIds.includes(record.id);
                       const hasConflict = conflictRecordIds.includes(record.id);
+                      const isActive = activeRecordIds.includes(record.id);
 
                       const clampedLeft = Math.max(
                         (segStartMs / 1000) * pxPerSec,
@@ -546,9 +561,13 @@ const TimelineEditor: React.FC<TimelineEditorProps> = ({
 
                       const nodeBg = hasConflict
                         ? `linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)`
+                        : isActive
+                        ? `linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%)`
                         : `linear-gradient(135deg, ${segment.themeColor} 0%, ${segment.themeColor}dd 100%)`;
                       const nodeBorderColor = isSelected
                         ? "#172033"
+                        : isActive
+                        ? "#f59e0b"
                         : hasConflict
                         ? "#dc2626"
                         : `${segment.themeColor}`;
@@ -560,7 +579,9 @@ const TimelineEditor: React.FC<TimelineEditorProps> = ({
                             isSelected ? "selected" : ""
                           } ${isDragging ? "dragging" : ""} ${
                             isHighlighted ? "highlighted" : ""
-                          } ${hasConflict ? "has-conflict" : ""}`}
+                          } ${hasConflict ? "has-conflict" : ""} ${
+                            isActive ? "active" : ""
+                          }`}
                           style={{
                             left: clampedLeft,
                             width: nodeW,
@@ -568,6 +589,8 @@ const TimelineEditor: React.FC<TimelineEditorProps> = ({
                             borderColor: nodeBorderColor,
                             boxShadow: isDragging
                               ? `0 8px 20px ${hasConflict ? "#dc2626" : segment.themeColor}60`
+                              : isActive
+                              ? `0 0 0 3px #f59e0b, 0 0 16px #f59e0b80, 0 4px 12px #f59e0b40`
                               : isHighlighted
                               ? `0 0 0 3px #f59e0b, 0 4px 12px ${hasConflict ? "#dc2626" : segment.themeColor}50`
                               : isSelected
@@ -620,6 +643,17 @@ const TimelineEditor: React.FC<TimelineEditorProps> = ({
                 </div>
               );
             })}
+
+            {currentTimeMs >= 0 && (
+              <div
+                className="timeline-playhead-overlay"
+                style={{
+                  left: SEG_LABEL_WIDTH + (currentTimeMs / 1000) * pxPerSec,
+                }}
+              >
+                <div className="playhead-overlay-line" />
+              </div>
+            )}
           </div>
         </div>
       </div>
